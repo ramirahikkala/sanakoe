@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Sanakoe</title>
 <style>
   :root {
@@ -161,6 +161,29 @@
   .done p { font-size: 1.2rem; color: var(--muted); }
   .done button { background: var(--ok); color: white; margin-top: 10px; }
   [hidden] { display: none !important; }
+
+  /* Puhelin: kortin ja vastauskentän pitää mahtua näppäimistön yläpuolelle */
+  @media (max-width: 700px) {
+    header { padding: 8px 16px 0; gap: 8px; }
+    h1 { font-size: 1.2rem; }
+    select { font-size: .9rem; padding: 6px 8px; }
+    .reset { padding: 6px 10px; font-size: .85rem; }
+    .progress { height: 8px; }
+    /* Tyhjää tilaa alas, jotta otsikkoalue voidaan vierittää pois näkyvistä */
+    #quiz { gap: 10px; padding: 10px 16px 50vh; }
+    .card { aspect-ratio: auto; height: 120px; }
+    .face { border-radius: 16px; padding: 12px; }
+    .face .lang { top: 8px; left: 12px; font-size: .8rem; }
+    .face .word { font-size: 1.9rem; }
+    .hint { display: none; }
+    .answer { padding: 12px 14px; border-radius: 16px; }
+    .answer label { font-size: 1rem; margin-bottom: 6px; }
+    .answer input { font-size: 1.3rem; padding: 10px 12px; }
+    .buttons { margin-top: 8px; gap: 8px; flex-wrap: nowrap; }
+    .peek .long { display: none; }
+    .buttons button { padding: 10px 12px; font-size: 1rem; }
+    .msg { margin-top: 8px; font-size: 1rem; min-height: 1.3em; }
+  }
 </style>
 </head>
 <body>
@@ -189,7 +212,7 @@
     <input id="input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="buttons">
       <button type="submit" class="check">Tarkista</button>
-      <button type="button" class="peek" id="peekBtn">👀 Kurkkaa (pidä pohjassa)</button>
+      <button type="button" class="peek" id="peekBtn">👀 Kurkkaa<span class="long"> (pidä pohjassa)</span></button>
     </div>
     <div class="msg" id="msg"></div>
   </form>
@@ -424,6 +447,15 @@ select.addEventListener('change', () => {
   render();
 });
 $('againBtn').addEventListener('click', reset);
+
+// Puhelimessa: kun näppäimistö aukeaa, vieritä kortti näkyviin ylälaitaan
+const mobile = window.matchMedia('(max-width: 700px)');
+function showCard() {
+  if (!mobile.matches || $('quiz').hidden) return;
+  window.scrollTo({ top: $('quiz').getBoundingClientRect().top + window.scrollY, behavior: 'instant' });
+}
+input.addEventListener('focus', () => setTimeout(showCard, 300));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', showCard);
 
 render();
 </script>
