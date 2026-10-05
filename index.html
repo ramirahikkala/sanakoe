@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanakoe</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --ink: #2b2a33;
+    --muted: #6e6b78;
+    --card-en: #3b6fd8;
+    --card-fi: #1f8a5b;
+    --ok: #1f8a5b;
+    --bad: #c8412f;
+    --warn: #b7791f;
+    --panel: #ffffff;
+    --line: #ddd8cc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  h1 { font-size: 1.6rem; margin: 0; flex: 1; }
+  .progress {
+    width: 100%;
+    height: 14px;
+    background: var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .progress > div {
+    height: 100%;
+    background: var(--ok);
+    transition: width .4s ease;
+  }
+  .stats { color: var(--muted); font-size: 1rem; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .reset { background: transparent; color: var(--muted); border: 2px solid var(--line); padding: 8px 14px; font-size: .95rem; }
+  .reset:hover { color: var(--bad); border-color: var(--bad); }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* Kortti */
+  .scene { perspective: 1200px; }
+  .card {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    transform-style: preserve-3d;
+    transition: transform .6s;
+    cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    text-align: center;
+  }
+  .face .lang { position: absolute; top: 14px; left: 18px; font-size: 1rem; opacity: .9; font-weight: 600; }
+  .face .word { font-size: clamp(2rem, 6vw, 3rem); font-weight: 700; word-break: break-word; }
+  .face.back { transform: rotateY(180deg); }
+  .face.en { background: var(--card-en); }
+  .face.fi { background: var(--card-fi); }
+  .hint { text-align: center; color: var(--muted); margin-top: 10px; font-size: .95rem; }
+
+  /* Vastaus */
+  .answer {
+    background: var(--panel);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.06);
+  }
+  .answer label { display: block; font-size: 1.2rem; font-weight: 600; margin-bottom: 12px; }
+  .answer input {
+    width: 100%;
+    font: inherit;
+    font-size: 1.6rem;
+    padding: 14px 16px;
+    border: 3px solid var(--line);
+    border-radius: 14px;
+    outline: none;
+  }
+  .answer input:focus { border-color: var(--card-en); }
+  .answer input.right { border-color: var(--ok); background: #eaf6ef; }
+  .answer input.wrong { border-color: var(--bad); animation: shake .35s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+  .buttons { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .check { background: var(--ink); color: white; flex: 1; }
+  .peek { background: #fff4dd; color: var(--warn); border: 2px solid #f0d9a8; }
+  .msg { min-height: 1.6em; margin-top: 14px; font-size: 1.15rem; font-weight: 600; }
+  .msg.ok { color: var(--ok); }
+  .msg.bad { color: var(--bad); }
+  .msg.warn { color: var(--warn); }
+
+  .done {
+    grid-column: 1 / -1;
+    text-align: center;
+    background: var(--panel);
+    border-radius: 20px;
+    padding: 48px 24px;
+  }
+  .done h2 { font-size: 2.2rem; margin: 0 0 10px; }
+  .done p { font-size: 1.2rem; color: var(--muted); }
+  .done button { background: var(--ok); color: white; margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Sanakoe</h1>
+  <span class="stats" id="stats"></span>
+  <button class="reset" id="resetBtn">Nollaa tulos</button>
+  <div class="progress"><div id="bar" style="width:0%"></div></div>
+</header>
+
+<main id="quiz">
+  <div>
+    <div class="scene">
+      <div class="card" id="card" title="Kurkkaa kääntämällä kortti">
+        <div class="face front" id="front"><span class="lang"></span><span class="word"></span></div>
+        <div class="face back" id="back"><span class="lang"></span><span class="word"></span></div>
+      </div>
+    </div>
+    <div class="hint">Jos et muista, voit kurkata kääntämällä kortin – mutta silloin sana kysytään myöhemmin uudestaan.</div>
+  </div>
+
+  <form class="answer" id="form" autocomplete="off">
+    <label for="input" id="prompt"></label>
+    <input id="input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="buttons">
+      <button type="submit" class="check">Tarkista</button>
+      <button type="button" class="peek" id="peekBtn">👀 Kurkkaa</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </form>
+</main>
+
+<main id="finished" hidden>
+  <div class="done">
+    <h2>🎉 Kaikki sanat osattu!</h2>
+    <p id="finishedText"></p>
+    <button id="againBtn">Aloita alusta</button>
+  </div>
+</main>
+
+<script src="sanat.js"></script>
+<script>
+const STORAGE_KEY = 'sanakoe-v1';
+const LANGS = {
+  en: { name: 'Englanti', flag: '🇬🇧', to: 'englanniksi' },
+  fi: { name: 'Suomi', flag: '🇫🇮', to: 'suomeksi' },
+};
+
+// Sanalista -> kysymykset (jokainen sana molempiin suuntiin)
+const words = SANAT.split('\n')
+  .map(l => l.trim())
+  .filter(l => l && !l.startsWith('#') && l.includes('='))
+  .map(l => {
+    const [en, fi] = l.split('=').map(s => s.trim());
+    return { en, fi };
+  });
+
+const questions = [];
+for (const w of words) {
+  questions.push({ id: 'en>fi|' + w.en + '|' + w.fi, ask: 'en', w });
+  questions.push({ id: 'fi>en|' + w.en + '|' + w.fi, ask: 'fi', w });
+}
+
+// Tila: osatut kysymykset, nykyinen kysymys ja onko siinä kurkattu
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (s && Array.isArray(s.done)) return s;
+  } catch (e) {}
+  return { done: [], current: null, peeked: false };
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+let state = loadState();
+let busy = false;
+
+const $ = id => document.getElementById(id);
+const card = $('card'), input = $('input'), msg = $('msg');
+
+function remaining() {
+  const done = new Set(state.done);
+  return questions.filter(q => !done.has(q.id));
+}
+
+function pickNext(previousId) {
+  const left = remaining();
+  if (left.length === 0) return null;
+  // Vältä saman kysymyksen toistamista heti perään, jos muita on jäljellä
+  const options = left.length > 1 ? left.filter(q => q.id !== previousId) : left;
+  return options[Math.floor(Math.random() * options.length)].id;
+}
+
+function normalize(s) {
+  return s.toLowerCase().replace(/[.,!?;:]/g, '').replace(/\s+/g, ' ').trim();
+}
+function isCorrect(given, expected) {
+  const g = normalize(given);
+  return expected.split('/').some(alt => normalize(alt) === g);
+}
+
+function setFace(el, lang, text) {
+  el.className = 'face ' + (el.id === 'back' ? 'back ' : 'front ') + lang;
+  el.querySelector('.lang').textContent = LANGS[lang].flag + ' ' + LANGS[lang].name;
+  el.querySelector('.word').textContent = text;
+}
+
+function render() {
+  const total = questions.length;
+  const doneCount = total - remaining().length;
+  $('bar').style.width = total ? (100 * doneCount / total) + '%' : '0%';
+  $('stats').textContent = `Osattu ${doneCount} / ${total}`;
+
+  if (!state.current || !questions.some(q => q.id === state.current) || state.done.includes(state.current)) {
+    state.current = pickNext(null);
+    state.peeked = false;
+    saveState();
+  }
+
+  if (!state.current) {
+    $('quiz').hidden = true;
+    $('finished').hidden = false;
+    $('finishedText').textContent = `Osasit kaikki ${words.length} sanaa molempiin suuntiin. Hienoa!`;
+    return;
+  }
+  $('quiz').hidden = false;
+  $('finished').hidden = true;
+
+  const q = questions.find(q => q.id === state.current);
+  const other = q.ask === 'en' ? 'fi' : 'en';
+  setFace($('front'), q.ask, q.w[q.ask]);
+  setFace($('back'), other, q.w[other]);
+  card.classList.remove('flipped');
+  $('prompt').textContent = `Kirjoita sana ${LANGS[other].to}:`;
+  input.value = '';
+  input.className = '';
+  input.disabled = false;
+  msg.textContent = state.peeked ? 'Kurkattu – tämä kysytään vielä uudestaan.' : '';
+  msg.className = 'msg' + (state.peeked ? ' warn' : '');
+  input.focus();
+}
+
+function peek() {
+  if (busy) return;
+  card.classList.toggle('flipped');
+  if (card.classList.contains('flipped') && !state.peeked) {
+    state.peeked = true;
+    saveState();
+    msg.textContent = 'Kurkattu – tämä kysytään vielä uudestaan.';
+    msg.className = 'msg warn';
+  }
+  input.focus();
+}
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  if (busy || !state.current) return;
+  const q = questions.find(q => q.id === state.current);
+  const other = q.ask === 'en' ? 'fi' : 'en';
+  if (!input.value.trim()) { input.focus(); return; }
+
+  if (isCorrect(input.value, q.w[other])) {
+    busy = true;
+    input.className = 'right';
+    input.disabled = true;
+    card.classList.add('flipped');
+    if (state.peeked) {
+      msg.textContent = 'Oikein! Mutta koska kurkkasit, sana tulee vielä uudestaan.';
+      msg.className = 'msg warn';
+    } else {
+      msg.textContent = 'Oikein! ✓';
+      msg.className = 'msg ok';
+      state.done.push(q.id);
+    }
+    const prev = state.current;
+    state.current = pickNext(prev);
+    state.peeked = false;
+    saveState();
+    setTimeout(() => { busy = false; render(); }, state.done.includes(prev) ? 1000 : 1800);
+  } else {
+    input.className = '';
+    void input.offsetWidth; // käynnistä tärinäanimaatio uudelleen
+    input.className = 'wrong';
+    msg.textContent = 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.';
+    msg.className = 'msg bad';
+    input.select();
+  }
+});
+
+card.addEventListener('click', peek);
+$('peekBtn').addEventListener('click', peek);
+
+function reset() {
+  state = { done: [], current: null, peeked: false };
+  saveState();
+  render();
+}
+$('resetBtn').addEventListener('click', () => {
+  if (confirm('Haluatko varmasti nollata tuloksen ja aloittaa alusta?')) reset();
+});
+$('againBtn').addEventListener('click', reset);
+
+render();
+</script>
+</body>
+</html>
