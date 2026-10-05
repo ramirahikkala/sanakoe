@@ -169,7 +169,7 @@
         <div class="face back" id="back"><span class="lang"></span><span class="word"></span></div>
       </div>
     </div>
-    <div class="hint">Jos et muista, voit kurkata kääntämällä kortin – mutta silloin sana kysytään myöhemmin uudestaan.</div>
+    <div class="hint">Sana on osattu vasta, kun se menee heti ensimmäisellä yrityksellä oikein ilman kurkkaamista. Muuten se kysytään myöhemmin uudestaan.</div>
   </div>
 
   <form class="answer" id="form" autocomplete="off">
@@ -220,7 +220,7 @@ function loadState() {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (s && Array.isArray(s.done)) return s;
   } catch (e) {}
-  return { done: [], current: null, peeked: false };
+  return { done: [], current: null, missed: false };
 }
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -266,7 +266,7 @@ function render() {
 
   if (!state.current || !questions.some(q => q.id === state.current) || state.done.includes(state.current)) {
     state.current = pickNext(null);
-    state.peeked = false;
+    state.missed = false;
     saveState();
   }
 
@@ -288,18 +288,18 @@ function render() {
   input.value = '';
   input.className = '';
   input.disabled = false;
-  msg.textContent = state.peeked ? 'Kurkattu – tämä kysytään vielä uudestaan.' : '';
-  msg.className = 'msg' + (state.peeked ? ' warn' : '');
+  msg.textContent = state.missed ? 'Tämä sana kysytään vielä uudestaan.' : '';
+  msg.className = 'msg' + (state.missed ? ' warn' : '');
   input.focus();
 }
 
 function peek() {
   if (busy) return;
   card.classList.toggle('flipped');
-  if (card.classList.contains('flipped') && !state.peeked) {
-    state.peeked = true;
+  if (card.classList.contains('flipped') && !state.missed) {
+    state.missed = true;
     saveState();
-    msg.textContent = 'Kurkattu – tämä kysytään vielä uudestaan.';
+    msg.textContent = 'Tämä sana kysytään vielä uudestaan.';
     msg.className = 'msg warn';
   }
   input.focus();
@@ -317,8 +317,8 @@ $('form').addEventListener('submit', e => {
     input.className = 'right';
     input.disabled = true;
     card.classList.add('flipped');
-    if (state.peeked) {
-      msg.textContent = 'Oikein! Mutta koska kurkkasit, sana tulee vielä uudestaan.';
+    if (state.missed) {
+      msg.textContent = 'Oikein! Sana tulee kuitenkin vielä uudestaan, koska se ei mennyt heti ensimmäisellä kerralla.';
       msg.className = 'msg warn';
     } else {
       msg.textContent = 'Oikein! ✓';
@@ -327,14 +327,16 @@ $('form').addEventListener('submit', e => {
     }
     const prev = state.current;
     state.current = pickNext(prev);
-    state.peeked = false;
+    state.missed = false;
     saveState();
     setTimeout(() => { busy = false; render(); }, state.done.includes(prev) ? 1000 : 1800);
   } else {
     input.className = '';
     void input.offsetWidth; // käynnistä tärinäanimaatio uudelleen
     input.className = 'wrong';
-    msg.textContent = 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.';
+    state.missed = true;
+    saveState();
+    msg.textContent = 'Ei ihan. Yritä uudelleen tai kurkkaa kortista. Tämä sana kysytään vielä uudestaan.';
     msg.className = 'msg bad';
     input.select();
   }
@@ -344,7 +346,7 @@ card.addEventListener('click', peek);
 $('peekBtn').addEventListener('click', peek);
 
 function reset() {
-  state = { done: [], current: null, peeked: false };
+  state = { done: [], current: null, missed: false };
   saveState();
   render();
 }

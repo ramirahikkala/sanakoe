@@ -4,7 +4,7 @@ Sanakoekortit koululaiselle (englanti ↔ suomi). Pelkkä staattinen sivu, julka
 
 - Kortissa näkyy sana, vastaus kirjoitetaan toisella kielellä.
 - Jokainen sana kysytään molempiin suuntiin.
-- Oikein mennyt sana ei tule enää uudestaan – paitsi jos kortista kurkattiin.
+- Sana on osattu vasta, kun se menee heti ensimmäisellä yrityksellä oikein ilman kurkkaamista. Muuten se kysytään myöhemmin uudestaan.
 - Edistyminen tallentuu selaimeen (localStorage), ja sen voi nollata.
 
 ## Sanojen vaihtaminen
