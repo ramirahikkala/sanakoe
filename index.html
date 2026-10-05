@@ -204,7 +204,7 @@
         <div class="face back" id="back"><span class="lang"></span><span class="word"></span></div>
       </div>
     </div>
-    <div class="hint">Sana on osattu vasta, kun se menee heti ensimmäisellä yrityksellä oikein ilman kurkkaamista. Muuten se kysytään myöhemmin uudestaan.</div>
+    <div class="hint">Saat yrittää niin monta kertaa kuin haluat. Jos kurkkaat kortista, sana kysytään myöhemmin uudestaan.</div>
   </div>
 
   <form class="answer" id="form" autocomplete="off">
@@ -296,6 +296,14 @@ function normalize(s) {
 function variants(alt) {
   return [alt.replace(/\([^)]*\)/g, ''), alt.replace(/[()]/g, '')];
 }
+// Vastaus on muuten oikein, mutta artikkeli (a, an, the) puuttuu, on ylimääräinen tai väärä
+function stripArticle(s) {
+  return normalize(s).replace(/^(a|an|the) /, '');
+}
+function missingArticle(given, expected) {
+  const g = stripArticle(given);
+  return expected.split('/').some(alt => variants(alt).some(v => stripArticle(v) === g));
+}
 function isCorrect(given, expected) {
   const g = normalize(given);
   return expected.split('/').some(alt => variants(alt).some(v => normalize(v) === g));
@@ -379,7 +387,7 @@ $('form').addEventListener('submit', e => {
     input.disabled = true;
     card.classList.add('flipped');
     if (state.missed) {
-      msg.textContent = 'Oikein! Sana tulee kuitenkin vielä uudestaan, koska se ei mennyt heti ensimmäisellä kerralla.';
+      msg.textContent = 'Oikein! Mutta koska kurkkasit, sana tulee vielä uudestaan.';
       msg.className = 'msg warn';
     } else {
       msg.textContent = 'Oikein! ✓';
@@ -395,9 +403,10 @@ $('form').addEventListener('submit', e => {
     input.className = '';
     void input.offsetWidth; // käynnistä tärinäanimaatio uudelleen
     input.className = 'wrong';
-    state.missed = true;
-    saveState();
-    msg.textContent = 'Ei ihan. Yritä uudelleen tai kurkkaa kortista. Tämä sana kysytään vielä uudestaan.';
+    msg.textContent = (missingArticle(input.value, q.w[other])
+      ? 'Ei ihan – muistitko artikkelin?'
+      : 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.')
+      + (state.missed ? ' Tämä sana kysytään vielä uudestaan.' : '');
     msg.className = 'msg bad';
     input.select();
   }
