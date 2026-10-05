@@ -90,7 +90,7 @@
     width: 100%;
     aspect-ratio: 3 / 2;
     transform-style: preserve-3d;
-    transition: transform .6s;
+    transition: transform .3s;
     cursor: pointer;
   }
   .card.flipped { transform: rotateY(180deg); }
@@ -143,6 +143,7 @@
   }
   .buttons { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   .check { background: var(--ink); color: white; flex: 1; }
+  .peek, .card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
   .peek { background: #fff4dd; color: var(--warn); border: 2px solid #f0d9a8; }
   .msg { min-height: 1.6em; margin-top: 14px; font-size: 1.15rem; font-weight: 600; }
   .msg.ok { color: var(--ok); }
@@ -175,7 +176,7 @@
 <main id="quiz">
   <div>
     <div class="scene">
-      <div class="card" id="card" title="Kurkkaa kääntämällä kortti">
+      <div class="card" id="card" title="Pidä pohjassa kurkataksesi">
         <div class="face front" id="front"><span class="lang"></span><span class="word"></span></div>
         <div class="face back" id="back"><span class="lang"></span><span class="word"></span></div>
       </div>
@@ -188,7 +189,7 @@
     <input id="input" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="buttons">
       <button type="submit" class="check">Tarkista</button>
-      <button type="button" class="peek" id="peekBtn">👀 Kurkkaa</button>
+      <button type="button" class="peek" id="peekBtn">👀 Kurkkaa (pidä pohjassa)</button>
     </div>
     <div class="msg" id="msg"></div>
   </form>
@@ -321,15 +322,24 @@ function render() {
   input.focus();
 }
 
-function peek() {
-  if (busy) return;
-  card.classList.toggle('flipped');
-  if (card.classList.contains('flipped') && !state.missed) {
+// Kurkkaus: kortti on käännettynä vain niin kauan kuin nappia (tai korttia) painetaan
+let peeking = false;
+function startPeek(e) {
+  if (e) e.preventDefault();
+  if (busy || peeking) return;
+  peeking = true;
+  card.classList.add('flipped');
+  if (!state.missed) {
     state.missed = true;
     saveState();
     msg.textContent = 'Tämä sana kysytään vielä uudestaan.';
     msg.className = 'msg warn';
   }
+}
+function endPeek() {
+  if (!peeking) return;
+  peeking = false;
+  if (!busy) card.classList.remove('flipped');
   input.focus();
 }
 
@@ -370,8 +380,17 @@ $('form').addEventListener('submit', e => {
   }
 });
 
-card.addEventListener('click', peek);
-$('peekBtn').addEventListener('click', peek);
+for (const el of [card, $('peekBtn')]) {
+  el.addEventListener('pointerdown', startPeek);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+for (const ev of ['pointerup', 'pointercancel', 'blur']) window.addEventListener(ev, endPeek);
+$('peekBtn').addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') startPeek(e);
+});
+$('peekBtn').addEventListener('keyup', e => {
+  if (e.key === ' ' || e.key === 'Enter') endPeek();
+});
 
 // Nollaa valitun kappaleen (tai kaikkien) tulos
 function reset() {
