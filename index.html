@@ -57,6 +57,16 @@
     font-size: 1.1rem;
     font-weight: 600;
   }
+  select {
+    font: inherit;
+    font-size: 1rem;
+    padding: 8px 10px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--ink);
+    max-width: 100%;
+  }
   .reset { background: transparent; color: var(--muted); border: 2px solid var(--line); padding: 8px 14px; font-size: .95rem; }
   .reset:hover { color: var(--bad); border-color: var(--bad); }
 
@@ -156,6 +166,7 @@
 
 <header>
   <h1>📚 Sanakoe</h1>
+  <select id="group" aria-label="Valitse kappale"></select>
   <span class="stats" id="stats"></span>
   <button class="reset" id="resetBtn">Nollaa tulos</button>
   <div class="progress"><div id="bar" style="width:0%"></div></div>
@@ -200,19 +211,25 @@ const LANGS = {
 };
 
 // Sanalista -> kysymykset (jokainen sana molempiin suuntiin)
-const words = SANAT.split('\n')
-  .map(l => l.trim())
-  .filter(l => l && !l.startsWith('#') && l.includes('='))
-  .map(l => {
-    const [en, fi] = l.split('=').map(s => s.trim());
-    return { en, fi };
-  });
+const groups = [];
+const words = [];
+for (const raw of SANAT.split('\n')) {
+  const l = raw.trim();
+  if (l.startsWith('##')) { groups.push(l.slice(2).trim()); continue; }
+  if (!l || l.startsWith('#') || !l.includes('=')) continue;
+  const i = l.indexOf('=');
+  words.push({ en: l.slice(0, i).trim(), fi: l.slice(i + 1).trim(), group: groups[groups.length - 1] || '' });
+}
 
 const questions = [];
 for (const w of words) {
   questions.push({ id: 'en>fi|' + w.en + '|' + w.fi, ask: 'en', w });
   questions.push({ id: 'fi>en|' + w.en + '|' + w.fi, ask: 'fi', w });
 }
+
+const ALL = '';
+function inGroup(q) { return state.group === ALL || q.w.group === state.group; }
+function groupQuestions() { return questions.filter(inGroup); }
 
 // Tila: osatut kysymykset, nykyinen kysymys ja onko siinä kurkattu
 function loadState() {
@@ -233,7 +250,7 @@ const card = $('card'), input = $('input'), msg = $('msg');
 
 function remaining() {
   const done = new Set(state.done);
-  return questions.filter(q => !done.has(q.id));
+  return groupQuestions().filter(q => !done.has(q.id));
 }
 
 function pickNext(previousId) {
@@ -245,11 +262,19 @@ function pickNext(previousId) {
 }
 
 function normalize(s) {
-  return s.toLowerCase().replace(/[.,!?;:]/g, '').replace(/\s+/g, ' ').trim();
+  return s.toLowerCase()
+    .replace(/[‘’´`]/g, "'")
+    .replace(/[.,!?;:"“”]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+// Sulkeissa oleva osa on vapaaehtoinen: "kirjautua (hotelliin)" käy kummin päin vain
+function variants(alt) {
+  return [alt.replace(/\([^)]*\)/g, ''), alt.replace(/[()]/g, '')];
 }
 function isCorrect(given, expected) {
   const g = normalize(given);
-  return expected.split('/').some(alt => normalize(alt) === g);
+  return expected.split('/').some(alt => variants(alt).some(v => normalize(v) === g));
 }
 
 function setFace(el, lang, text) {
@@ -259,12 +284,13 @@ function setFace(el, lang, text) {
 }
 
 function render() {
-  const total = questions.length;
+  const total = groupQuestions().length;
   const doneCount = total - remaining().length;
   $('bar').style.width = total ? (100 * doneCount / total) + '%' : '0%';
   $('stats').textContent = `Osattu ${doneCount} / ${total}`;
 
-  if (!state.current || !questions.some(q => q.id === state.current) || state.done.includes(state.current)) {
+  const cur = questions.find(q => q.id === state.current);
+  if (!cur || !inGroup(cur) || state.done.includes(state.current)) {
     state.current = pickNext(null);
     state.missed = false;
     saveState();
@@ -273,7 +299,9 @@ function render() {
   if (!state.current) {
     $('quiz').hidden = true;
     $('finished').hidden = false;
-    $('finishedText').textContent = `Osasit kaikki ${words.length} sanaa molempiin suuntiin. Hienoa!`;
+    const n = total / 2;
+    const where = state.group === ALL ? '' : ` (${state.group})`;
+    $('finishedText').textContent = `Osasit kaikki ${n} sanaa${where} molempiin suuntiin. Hienoa!`;
     return;
   }
   $('quiz').hidden = false;
@@ -345,13 +373,36 @@ $('form').addEventListener('submit', e => {
 card.addEventListener('click', peek);
 $('peekBtn').addEventListener('click', peek);
 
+// Nollaa valitun kappaleen (tai kaikkien) tulos
 function reset() {
-  state = { done: [], current: null, missed: false };
+  const ids = new Set(groupQuestions().map(q => q.id));
+  state.done = state.done.filter(id => !ids.has(id));
+  state.current = null;
+  state.missed = false;
   saveState();
   render();
 }
 $('resetBtn').addEventListener('click', () => {
-  if (confirm('Haluatko varmasti nollata tuloksen ja aloittaa alusta?')) reset();
+  const what = state.group === ALL ? 'kaikkien sanojen' : `kappaleen "${state.group}"`;
+  if (confirm(`Haluatko varmasti nollata ${what} tuloksen?`)) reset();
+});
+
+const select = $('group');
+for (const [value, label] of [[ALL, 'Kaikki sanat'], ...groups.map(g => [g, g])]) {
+  const opt = document.createElement('option');
+  opt.value = value;
+  opt.textContent = label;
+  select.appendChild(opt);
+}
+if (typeof state.group !== 'string' || (state.group !== ALL && !groups.includes(state.group))) state.group = ALL;
+select.value = state.group;
+select.addEventListener('change', () => {
+  if (busy) { select.value = state.group; return; }
+  state.group = select.value;
+  state.current = null;
+  state.missed = false;
+  saveState();
+  render();
 });
 $('againBtn').addEventListener('click', reset);
 
