@@ -259,9 +259,13 @@ function groupQuestions() { return questions.filter(inGroup); }
 function loadState() {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (s && Array.isArray(s.done)) return s;
+    if (s && Array.isArray(s.done)) {
+      // Vanhassa versiossa väärä vastaus merkitsi sanan uusittavaksi; nyt vain kurkkaus
+      if (s.v !== 2) { s.missed = false; s.v = 2; }
+      return s;
+    }
   } catch (e) {}
-  return { done: [], current: null, missed: false };
+  return { v: 2, done: [], current: null, missed: false };
 }
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -348,7 +352,7 @@ function render() {
   input.value = '';
   input.className = '';
   input.disabled = false;
-  msg.textContent = state.missed ? 'Tämä sana kysytään vielä uudestaan.' : '';
+  msg.textContent = state.missed ? 'Kurkattu – tämä sana kysytään vielä uudestaan.' : '';
   msg.className = 'msg' + (state.missed ? ' warn' : '');
   input.focus();
 }
@@ -363,7 +367,7 @@ function startPeek(e) {
   if (!state.missed) {
     state.missed = true;
     saveState();
-    msg.textContent = 'Tämä sana kysytään vielä uudestaan.';
+    msg.textContent = 'Kurkattu – tämä sana kysytään vielä uudestaan.';
     msg.className = 'msg warn';
   }
 }
@@ -405,8 +409,7 @@ $('form').addEventListener('submit', e => {
     input.className = 'wrong';
     msg.textContent = (missingArticle(input.value, q.w[other])
       ? 'Ei ihan – muistitko artikkelin?'
-      : 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.')
-      + (state.missed ? ' Tämä sana kysytään vielä uudestaan.' : '');
+      : 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.');
     msg.className = 'msg bad';
     input.select();
   }
