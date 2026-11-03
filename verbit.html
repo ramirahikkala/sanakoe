@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>Epäsäännölliset verbit</title>
+<style>
+  :root {
+    --bg: #f4f1ea; --ink: #2b2a33; --muted: #6e6b78;
+    --card-en: #3b6fd8; --card-fi: #1f8a5b;
+    --ok: #1f8a5b; --bad: #c8412f; --warn: #b7791f;
+    --panel: #ffffff; --line: #ddd8cc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+  header { max-width: 900px; margin: 0 auto; padding: 20px 16px 0;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 1.6rem; margin: 0; flex: 1; }
+  .nav { color: var(--muted); font-size: .95rem; }
+  .progress { width: 100%; height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--ok); transition: width .4s ease; }
+  .stats { color: var(--muted); font-size: 1rem; }
+  button { font: inherit; cursor: pointer; border: none; border-radius: 12px;
+    padding: 12px 20px; font-size: 1.1rem; font-weight: 600; }
+  select { font: inherit; font-size: 1rem; padding: 8px 10px; border: 2px solid var(--line);
+    border-radius: 12px; background: var(--panel); color: var(--ink); max-width: 100%; }
+  .reset { background: transparent; color: var(--muted); border: 2px solid var(--line); padding: 8px 14px; font-size: .95rem; }
+  .reset:hover { color: var(--bad); border-color: var(--bad); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 40px; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .slot { display: flex; flex-direction: column; gap: 12px; }
+  .scene { perspective: 1200px; }
+  .card { position: relative; width: 100%; aspect-ratio: 3 / 2; transform-style: preserve-3d;
+    transition: transform .3s; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; touch-action: none; cursor: pointer; }
+  .card.flipped { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: white; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.15); text-align: center; }
+  .face .lang { position: absolute; top: 12px; left: 16px; font-size: .95rem; opacity: .9; font-weight: 600; }
+  .face .word { font-size: clamp(1.5rem, 5vw, 2.4rem); font-weight: 700; word-break: break-word; }
+  .face.back { transform: rotateY(180deg); }
+  .face.en { background: var(--card-en); }
+  .face.fi { background: var(--card-fi); }
+  input { width: 100%; font: inherit; font-size: 1.5rem; padding: 12px 14px;
+    border: 3px solid var(--line); border-radius: 14px; outline: none; background: var(--panel); }
+  input:focus { border-color: var(--card-en); }
+  input.right { border-color: var(--ok); background: #eaf6ef; }
+  input.wrong { border-color: var(--bad); animation: shake .35s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  .under { grid-column: 1 / -1; }
+  .buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+  .check { background: var(--ink); color: white; flex: 1; }
+  .peek { background: #fff4dd; color: var(--warn); border: 2px solid #f0d9a8; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .msg { min-height: 1.6em; margin-top: 12px; font-size: 1.15rem; font-weight: 600; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); } .msg.warn { color: var(--warn); }
+  .hint { color: var(--muted); margin-top: 8px; font-size: .95rem; }
+  .done { text-align: center; background: var(--panel); border-radius: 20px; padding: 48px 24px; }
+  .done h2 { font-size: 2.2rem; margin: 0 0 10px; }
+  .done p { font-size: 1.2rem; color: var(--muted); }
+  .done button { background: var(--ok); color: white; margin-top: 10px; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 700px) {
+    header { padding: 8px 16px 0; gap: 8px; }
+    h1 { font-size: 1.2rem; }
+    select { font-size: .9rem; padding: 6px 8px; }
+    .reset { padding: 6px 10px; font-size: .85rem; }
+    .progress { height: 8px; }
+    main { padding: 10px 16px 50vh; }
+    form { gap: 10px; }
+    .slot { gap: 8px; }
+    .card { aspect-ratio: auto; height: 100px; }
+    .face { border-radius: 16px; padding: 8px; }
+    .face .lang { top: 6px; left: 10px; font-size: .7rem; }
+    .face .word { font-size: 1.2rem; }
+    input { font-size: 1.1rem; padding: 10px; }
+    .hint { display: none; }
+    .buttons { gap: 8px; flex-wrap: nowrap; }
+    .buttons button { padding: 10px 12px; font-size: 1rem; }
+    .peek .long { display: none; }
+    .msg { margin-top: 6px; font-size: 1rem; min-height: 1.3em; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Epäsäännölliset verbit</h1>
+  <a class="nav" href="index.html">← Sanakortit</a>
+  <select id="group" aria-label="Valitse koe"></select>
+  <span class="stats" id="stats"></span>
+  <button class="reset" id="resetBtn">Nollaa tulos</button>
+  <div class="progress"><div id="bar" style="width:0%"></div></div>
+</header>
+
+<main id="quiz">
+  <form id="form" autocomplete="off">
+    <div class="slot">
+      <div class="scene"><div class="card" id="card0">
+        <div class="face front fi"><span class="lang">🇫🇮 Suomi</span><span class="word"></span></div>
+        <div class="face back en"><span class="lang">🇬🇧 Englanti</span><span class="word"></span></div>
+      </div></div>
+      <input id="in0" type="text" aria-label="Perusmuoto englanniksi" placeholder="perusmuoto" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="slot">
+      <div class="scene"><div class="card" id="card1">
+        <div class="face front fi"><span class="lang">🇫🇮 Suomi</span><span class="word"></span></div>
+        <div class="face back en"><span class="lang">🇬🇧 Englanti</span><span class="word"></span></div>
+      </div></div>
+      <input id="in1" type="text" aria-label="Imperfekti englanniksi" placeholder="imperfekti" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="under">
+      <div class="buttons">
+        <button type="submit" class="check">Tarkista</button>
+        <button type="button" class="peek" id="peekBtn">👀 Kurkkaa<span class="long"> (pidä pohjassa)</span></button>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="hint">Kirjoita sana englanniksi molemmilla lapuilla. Yrityksiä on rajattomasti. Jos kurkkaat, verbi kysytään myöhemmin uudestaan.</div>
+    </div>
+  </form>
+</main>
+
+<main id="finished" hidden>
+  <div class="done">
+    <h2>🎉 Kaikki verbit osattu!</h2>
+    <p id="finishedText"></p>
+    <button id="againBtn">Aloita alusta</button>
+  </div>
+</main>
+
+<script src="verbit.js"></script>
+<script>
+const STORAGE_KEY = 'sanakoe-verbit-v1';
+
+const groups = [];
+const verbs = [];
+for (const raw of VERBIT.split('\n')) {
+  const l = raw.trim();
+  if (l.startsWith('##')) { groups.push(l.slice(2).trim()); continue; }
+  if (!l || l.startsWith('#') || !l.includes('=')) continue;
+  const [en, fi] = l.split('=').map(s => s.trim());
+  const [en0, en1] = en.split(' - ').map(s => s.trim());
+  const [fi0, fi1] = fi.split(' - ').map(s => s.trim());
+  verbs.push({ id: en, en: [en0, en1], fi: [fi0, fi1], group: groups[groups.length - 1] || '' });
+}
+
+// Sama suomennos voi viitata useaan verbiin (tehdä: do, make) -> hyväksy kaikki
+function accepted(v, slot) {
+  return verbs.filter(o => o.fi[slot] === v.fi[slot]).flatMap(o => o.en[slot].split('/'));
+}
+
+const ALL = '';
+function inGroup(v) { return state.group === ALL || v.group === state.group; }
+function groupVerbs() { return verbs.filter(inGroup); }
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (s && Array.isArray(s.done)) return s;
+  } catch (e) {}
+  return { done: [], current: null, missed: false, group: ALL };
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+let state = loadState();
+let busy = false;
+let solved = [false, false]; // onko lapun vastaus jo oikein tällä kierroksella
+
+const $ = id => document.getElementById(id);
+const cards = [$('card0'), $('card1')], inputs = [$('in0'), $('in1')], msg = $('msg');
+
+function remaining() {
+  const done = new Set(state.done);
+  return groupVerbs().filter(v => !done.has(v.id));
+}
+function pickNext(prevId) {
+  const left = remaining();
+  if (!left.length) return null;
+  const options = left.length > 1 ? left.filter(v => v.id !== prevId) : left;
+  return options[Math.floor(Math.random() * options.length)].id;
+}
+function normalize(s) {
+  return s.toLowerCase().replace(/[‘’´`]/g, "'").replace(/[.,!?;:"“”]/g, '').replace(/\s+/g, ' ').trim();
+}
+function isCorrect(given, list) {
+  const g = normalize(given);
+  return list.some(a => normalize(a) === g);
+}
+
+function render() {
+  const total = groupVerbs().length;
+  const doneCount = total - remaining().length;
+  $('bar').style.width = total ? (100 * doneCount / total) + '%' : '0%';
+  $('stats').textContent = `Osattu ${doneCount} / ${total}`;
+
+  const cur = verbs.find(v => v.id === state.current);
+  if (!cur || !inGroup(cur) || state.done.includes(state.current)) {
+    state.current = pickNext(null);
+    state.missed = false;
+    saveState();
+  }
+  if (!state.current) {
+    $('quiz').hidden = true;
+    $('finished').hidden = false;
+    const where = state.group === ALL ? '' : ` (${state.group})`;
+    $('finishedText').textContent = `Osasit kaikki ${total} verbiä${where} molemmissa aikamuodoissa. Hienoa!`;
+    return;
+  }
+  $('quiz').hidden = false;
+  $('finished').hidden = true;
+
+  const v = verbs.find(v => v.id === state.current);
+  solved = [false, false];
+  for (let i = 0; i < 2; i++) {
+    cards[i].classList.remove('flipped');
+    cards[i].querySelector('.front .word').textContent = v.fi[i];
+    cards[i].querySelector('.back .word').textContent = v.en[i].split('/').map(s => s.trim()).join(' / ');
+    inputs[i].value = '';
+    inputs[i].className = '';
+    inputs[i].disabled = false;
+  }
+  msg.textContent = state.missed ? 'Kurkattu – tämä verbi kysytään vielä uudestaan.' : '';
+  msg.className = 'msg' + (state.missed ? ' warn' : '');
+  inputs[0].focus();
+}
+
+// Kurkkaus: molemmat kortit käännettynä vain niin kauan kuin nappia (tai korttia) painetaan
+let peeking = false;
+function startPeek(e) {
+  if (e) e.preventDefault();
+  if (busy || peeking) return;
+  peeking = true;
+  cards.forEach(c => c.classList.add('flipped'));
+  if (!state.missed) {
+    state.missed = true;
+    saveState();
+    msg.textContent = 'Kurkattu – tämä verbi kysytään vielä uudestaan.';
+    msg.className = 'msg warn';
+  }
+}
+function endPeek() {
+  if (!peeking) return;
+  peeking = false;
+  if (!busy) cards.forEach(c => c.classList.remove('flipped'));
+  const next = inputs.find(i => !i.disabled);
+  if (next) next.focus();
+}
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  if (busy || !state.current) return;
+  const v = verbs.find(v => v.id === state.current);
+  if (inputs.every((inp, i) => solved[i] || !inp.value.trim())) { (inputs.find(i => !i.disabled) || inputs[0]).focus(); return; }
+
+  for (let i = 0; i < 2; i++) {
+    if (solved[i]) continue;
+    const inp = inputs[i];
+    if (!inp.value.trim()) { inp.className = ''; continue; }
+    if (isCorrect(inp.value, accepted(v, i))) {
+      solved[i] = true;
+      inp.className = 'right';
+      inp.disabled = true;
+    } else {
+      inp.className = '';
+      void inp.offsetWidth;
+      inp.className = 'wrong';
+    }
+  }
+
+  if (solved[0] && solved[1]) {
+    busy = true;
+    cards.forEach(c => c.classList.add('flipped'));
+    if (state.missed) {
+      msg.textContent = 'Molemmat oikein! Mutta koska kurkkasit, verbi tulee vielä uudestaan.';
+      msg.className = 'msg warn';
+    } else {
+      msg.textContent = 'Molemmat oikein! ✓✓';
+      msg.className = 'msg ok';
+      state.done.push(v.id);
+    }
+    const prev = state.current;
+    state.current = pickNext(prev);
+    state.missed = false;
+    saveState();
+    setTimeout(() => { busy = false; render(); }, state.done.includes(prev) ? 1200 : 2000);
+  } else {
+    const names = ['perusmuoto', 'imperfekti'];
+    const ok = [0, 1].filter(i => solved[i]);
+    if (ok.length === 1) {
+      msg.textContent = `Vain ${names[ok[0]]} oikein. Yritä toista uudelleen tai kurkkaa.`;
+    } else {
+      msg.textContent = 'Ei ihan. Yritä uudelleen tai kurkkaa kortista.';
+    }
+    msg.className = 'msg bad';
+    const next = inputs.find(i => !i.disabled);
+    if (next) { next.focus(); next.select(); }
+  }
+});
+
+for (const el of [...cards, $('peekBtn')]) {
+  el.addEventListener('pointerdown', startPeek);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+for (const ev of ['pointerup', 'pointercancel', 'blur']) window.addEventListener(ev, endPeek);
+$('peekBtn').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') startPeek(e); });
+$('peekBtn').addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') endPeek(); });
+
+function reset() {
+  const ids = new Set(groupVerbs().map(v => v.id));
+  state.done = state.done.filter(id => !ids.has(id));
+  state.current = null;
+  state.missed = false;
+  saveState();
+  render();
+}
+$('resetBtn').addEventListener('click', () => {
+  const what = state.group === ALL ? 'kaikkien verbien' : `kokeen "${state.group}"`;
+  if (confirm(`Haluatko varmasti nollata ${what} tuloksen?`)) reset();
+});
+
+const select = $('group');
+for (const [value, label] of [...groups.map(g => [g, g]), [ALL, 'Kaikki verbit']]) {
+  const opt = document.createElement('option');
+  opt.value = value; opt.textContent = label;
+  select.appendChild(opt);
+}
+if (state.group === ALL && !state.hasChosen) state.group = groups[0];
+if (typeof state.group !== 'string' || (state.group !== ALL && !groups.includes(state.group))) state.group = groups[0];
+select.value = state.group;
+select.addEventListener('change', () => {
+  if (busy) { select.value = state.group; return; }
+  state.group = select.value;
+  state.hasChosen = true;
+  state.current = null;
+  state.missed = false;
+  saveState();
+  render();
+});
+$('againBtn').addEventListener('click', reset);
+
+const mobile = window.matchMedia('(max-width: 700px)');
+function showCard() {
+  if (!mobile.matches || $('quiz').hidden) return;
+  window.scrollTo({ top: $('quiz').getBoundingClientRect().top + window.scrollY, behavior: 'instant' });
+}
+inputs.forEach(i => i.addEventListener('focus', () => setTimeout(showCard, 300)));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', showCard);
+
+render();
+</script>
+</body>
+</html>

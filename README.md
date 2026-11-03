@@ -6,6 +6,7 @@ Sanakoekortit koululaiselle (englanti ↔ suomi). Pelkkä staattinen sivu, julka
 - Jokainen sana kysytään molempiin suuntiin.
 - Yrityksiä on rajattomasti. Sana on osattu, kun sen saa oikein kurkkaamatta. Jos kortista kurkataan, sana kysytään myöhemmin uudestaan.
 - Jos vastaus on muuten oikein mutta artikkeli (a, an, the) puuttuu tai on väärä, sivu vinkkaa siitä.
+- Epäsäännölliset verbit ovat omalla sivullaan (`verbit.html`, sanat tiedostossa `verbit.js`): kaksi korttia kerrallaan (perusmuoto ja imperfekti), kolme koetta à 14 verbiä.
 - Edistyminen tallentuu selaimeen (localStorage), ja sen voi nollata.
 
 ## Sanojen vaihtaminen
